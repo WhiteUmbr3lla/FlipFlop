@@ -16,7 +16,7 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The self-test needs an English and a Hebrew layout, and the runner only has English.
       - name: Add Hebrew keyboard layout
@@ -30,11 +30,11 @@ jobs:
         shell: cmd
         run: package.cmd
 
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v3
         with:
           subject-path: dist/FlipFlop-*.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: FlipFlop
           path: dist/FlipFlop-*.zip
