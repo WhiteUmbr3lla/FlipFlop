@@ -1,0 +1,49 @@
+# Builds FlipFlop from this repo on GitHub's machines and attaches the zip to the release, with a signed
+# build provenance attestation so anyone can check the zip came from this code: gh attestation verify <zip> -R <owner>/FlipFlop
+# Push a tag like v1.0.3 to release; "Run workflow" builds without releasing (zip under the run's artifacts).
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The self-test needs an English and a Hebrew layout, and the runner only has English.
+      - name: Add Hebrew keyboard layout
+        shell: powershell
+        run: |
+          $l = Get-WinUserLanguageList; $l.Add('he-IL'); Set-WinUserLanguageList $l -Force
+          Add-Type -Name K -Namespace W -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr LoadKeyboardLayout(string id, uint flags);'
+          [W.K]::LoadKeyboardLayout('0000040D', 0) | Out-Null
+
+      - name: Build, self-test, package
+        shell: cmd
+        run: package.cmd
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/FlipFlop-*.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlipFlop
+          path: dist/FlipFlop-*.zip
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" dist/FlipFlop-*.zip --clobber ||
+            gh release create "$GITHUB_REF_NAME" dist/FlipFlop-*.zip --title "FlipFlop ${GITHUB_REF_NAME#v}" --generate-notes
