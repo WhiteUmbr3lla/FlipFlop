@@ -1,4 +1,4 @@
-FlipFlop 1.0 - fixes text typed in the wrong keyboard layout (Hebrew <-> English)
+FlipFlop - fixes text typed in the wrong keyboard layout (Hebrew <-> English)
 ===============================================================================
 
 Typed "akuo" when you meant "shalom" in Hebrew? Tap Shift twice and it's fixed.

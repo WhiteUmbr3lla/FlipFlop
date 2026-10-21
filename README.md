@@ -1,6 +1,15 @@
-﻿# FlipFlop 1.0.2
+﻿# FlipFlop 1.0.3
 
 Typed in the wrong layout (`akuo` instead of `שלום`)? Tap **Shift twice**. FlipFlop finds where the wrong-layout text starts, retypes it in the other layout, and switches your keyboard. Tap again to undo.
+
+## Download
+**[Download the latest FlipFlop zip](https://github.com/WhiteUmbr3lla/FlipFlop/releases/latest)**, unzip it to a folder you'll keep, and run `FlipFlop.exe`. Needs Windows 10/11 with English and Hebrew keyboard layouts installed.
+
+FlipFlop isn't code-signed, so Windows may say "Windows protected your PC": click **More info**, then **Run anyway**. Every release zip is built from this repo's source by [GitHub Actions](.github/workflows/release.yml), not on anyone's PC, and you can check that yourself:
+
+    gh attestation verify FlipFlop-<version>.zip -R WhiteUmbr3lla/FlipFlop
+
+Privacy: what you type stays in memory and is never saved or sent anywhere. See [PRIVACY.md](PRIVACY.md).
 
 ## What gets fixed (Smart mode)
 1. **Text selected** (mouse or Shift+arrows): converts exactly the selection. Use this to force it.
@@ -13,11 +22,13 @@ Settings (double-click the tray icon): the hotkey (double Shift or any combo), w
 
 **Stays out of the way:** right-click the tray icon, then "Don't use in <app>" for the app you were last typing in (code editors, games, remote desktop...), or "Excluded apps..." to edit the list (`%AppData%\FlipFlop\excluded.txt`). FlipFlop also pauses by itself in full-screen games, videos and presentations, including borderless full-screen windows (but not in maximized ones).
 
-**Starts with Windows** by default (set on first launch, with a one-time tray notification). If you move the folder, the startup entry follows the new location the next time you run it. Turn it off in Settings.
+**Starts with Windows** by default (set on first launch, with a one-time tray notification). If you move the folder, the startup entry follows the new location the next time you run it. Turn it off in Settings. (The Microsoft Store version uses a Windows startup task instead; manage it in Windows Settings > Apps > Startup.)
 
 **My words** (tray menu): names, slang, anything the built-in word lists don't know. Spell each one correctly, one per line. Saved in `%AppData%\FlipFlop\words.txt`.
 
-## Build
+## For developers
+
+### Build
 Needs only .NET Framework 4.8, which ships with Windows 10/11:
 
     build.cmd
@@ -33,6 +44,8 @@ End-to-end test (FlipFlop must be running with default settings; hands off the k
 It types into its own window like a keyboard and checks fixing, undo, selection, the current-line fallback, clipboard restore (text, files, images) and the layout switch, in both a plain and a rich edit box. `tests\e2e.exe --excluded` checks an excluded app is left alone (put `e2e.exe` in `excluded.txt` and turn auto mode on first). `tests\e2e.exe --auto` runs the auto mode cases instead (turn "Auto-fix while typing" on first), including a password box.
 
 `package.cmd` rebuilds, runs the self-test, and zips `FlipFlop.exe` with the user guide (`package\README.txt`) into `dist\FlipFlop-<version>.zip` for sharing. The version lives in the `AssemblyFileVersion` line at the top of `Program.cs`; bump it before sharing a new build.
+
+`store\make-msix.ps1` builds the Microsoft Store package (`dist\FlipFlop-<version>.msix`, unsigned; the Store signs it) from `store\AppxManifest.xml`; it needs `makeappx.exe` from the Windows SDK. With `-LayoutOnly` it only lays out `msix\`, which you can install for testing with `Add-AppxPackage -Register msix\AppxManifest.xml` (Developer Mode). Pushing a `v*` tag makes GitHub Actions build, attest and attach both the zip and the .msix to the release.
 
 `build.cmd` builds twice: the first build draws the logo into `flipflop.ico`, the second uses it as the exe icon.
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -32,6 +32,7 @@ static class Native
     [DllImport("user32.dll", SetLastError = true)] public static extern IntPtr SetWindowsHookEx(int id, HookProc proc, IntPtr mod, uint thread);
     [DllImport("user32.dll")] public static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wParam, IntPtr lParam);
     [DllImport("kernel32.dll")] public static extern IntPtr GetModuleHandle(string name);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern int GetCurrentPackageFullName(ref int len, StringBuilder name);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll")] public static extern IntPtr GetKeyboardLayout(uint thread);

@@ -14,8 +14,8 @@ using Microsoft.Win32;
 
 [assembly: AssemblyTitle("FlipFlop")]
 [assembly: AssemblyProduct("FlipFlop")]
-[assembly: AssemblyVersion("1.0.2.0")]
-[assembly: AssemblyFileVersion("1.0.2")]
+[assembly: AssemblyVersion("1.0.3.0")]
+[assembly: AssemblyFileVersion("1.0.3")]
 
 static class Program
 {
@@ -27,6 +27,8 @@ static class Program
     static Icon iconOn, iconOff;
     static Form openForm;               // the one settings/list window that may be open
     static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FlipFlop");
+    // Installed from the Microsoft Store (MSIX): startup is the manifest's StartupTask, not the Run key.
+    static readonly bool Packaged = IsPackaged();
     static readonly string WordsFile = Path.Combine(Dir, "words.txt"), ExcludedFile = Path.Combine(Dir, "excluded.txt");
 
     [STAThread]
@@ -38,6 +40,7 @@ static class Program
         string err = Detector.Init();
         if (args.Length > 0 && args[0] == "--selftest") return SelfTest(err);
         if (args.Length > 1 && args[0] == "--write-icon") { WriteIcon(args[1]); return 0; }
+        if (args.Length > 3 && args[0] == "--write-png") { WritePng(args[1], int.Parse(args[2]), int.Parse(args[3])); return 0; }
         if (err != null) { MessageBox.Show(err, "FlipFlop"); return 1; }
 
         bool first;
@@ -55,6 +58,7 @@ static class Program
             k.SetValue("Started", 1);
         }
         // Starts with Windows by default. If the folder moved since, point the startup entry at this copy.
+        if (!Packaged)
         using (var k = Registry.CurrentUser.OpenSubKey(RunKey))
         {
             object run = k == null ? null : k.GetValue("FlipFlop");
@@ -132,6 +136,13 @@ static class Program
     {
         try { return m.WaitOne(5000); }
         catch (AbandonedMutexException) { return true; }
+    }
+
+    static bool IsPackaged()
+    {
+        int len = 0;
+        try { return Native.GetCurrentPackageFullName(ref len, null) != 15700; } // APPMODEL_ERROR_NO_PACKAGE
+        catch (EntryPointNotFoundException) { return false; }
     }
 
     static string RunValue() { return "\"" + Application.ExecutablePath + "\""; }
@@ -266,6 +277,18 @@ static class Program
         return bmp;
     }
 
+    // Store logos (store\make-msix.ps1): the logo centered on a transparent w x h canvas.
+    static void WritePng(string path, int w, int h)
+    {
+        int s = Math.Min(w, h);
+        using (var logo = DrawLogo(s, true))
+        using (var b = new Bitmap(w, h))
+        {
+            using (var g = Graphics.FromImage(b)) g.DrawImage(logo, (w - s) / 2, (h - s) / 2, s, s);
+            b.Save(path, ImageFormat.Png);
+        }
+    }
+
     // Multi-size .ico with PNG frames, used by build.cmd for the exe icon.
     static void WriteIcon(string path)
     {
@@ -320,6 +343,7 @@ static class Program
     static void ShowSettings()
     {
         if (AlreadyOpen()) return;
+        bool wasEnabled = Hooks.Enabled; // the tray's Enabled toggle
         Hooks.Enabled = false; // don't fire while capturing a new hotkey
         Keys hot = Hooks.HotKey;
         var f = new Form { Text = "FlipFlop " + Ver + " settings", FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false,
@@ -357,7 +381,9 @@ static class Program
 
         var startup = new CheckBox { Text = "Start with Windows", Location = new Point(110, 148), AutoSize = true };
         using (var k = Registry.CurrentUser.OpenSubKey(RunKey)) startup.Checked = k != null && k.GetValue("FlipFlop") != null;
-        f.Controls.Add(startup);
+        if (Packaged) f.Controls.Add(Link("Start with Windows: set in Windows Settings", "ms-settings:startupapps", new Point(110, 150)));
+        else f.Controls.Add(startup);
+        f.Controls.Add(Link("FlipFlop on GitHub", "https://github.com/WhiteUmbr3lla/FlipFlop", new Point(12, 233)));
 
         var logBox = new CheckBox { Text = "Write a log", Location = new Point(110, 174), AutoSize = true, Checked = Injector.Logging };
         f.Controls.Add(logBox);
@@ -381,12 +407,19 @@ static class Program
             Hooks.HotKey = hot;
             Injector.Logging = logBox.Checked;
             using (var k = Registry.CurrentUser.CreateSubKey(RegKey)) { k.SetValue("Mode", (int)mode); k.SetValue("HotKey", (int)hot); k.SetValue("Log", logBox.Checked ? 1 : 0); }
-            SetStartup(startup.Checked);
+            if (!Packaged) SetStartup(startup.Checked);
             tray.Text = TrayText();
         }
         openForm = null;
         f.Dispose();
-        Hooks.Enabled = true;
+        Hooks.Enabled = wasEnabled;
+    }
+
+    static LinkLabel Link(string text, string target, Point at)
+    {
+        var l = new LinkLabel { Text = text, Location = at, AutoSize = true };
+        l.LinkClicked += (s, e) => { try { Process.Start(target); } catch { } };
+        return l;
     }
 
     static int SelfTest(string err)

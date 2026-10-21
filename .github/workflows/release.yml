@@ -1,4 +1,4 @@
-# Builds FlipFlop from this repo on GitHub's machines and attaches the zip to the release, with a signed
+# Builds FlipFlop from this repo on GitHub's machines and attaches the zip (and the Store .msix) to the release, with a signed
 # build provenance attestation so anyone can check the zip came from this code: gh attestation verify <zip> -R <owner>/FlipFlop
 # Push a tag like v1.0.3 to release; "Run workflow" builds without releasing (zip under the run's artifacts).
 name: release
@@ -30,14 +30,18 @@ jobs:
         shell: cmd
         run: package.cmd
 
+      - name: Store package (MSIX)
+        shell: powershell
+        run: store\make-msix.ps1
+
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-path: dist/FlipFlop-*.zip
+          subject-path: dist/FlipFlop-*.*
 
       - uses: actions/upload-artifact@v6
         with:
           name: FlipFlop
-          path: dist/FlipFlop-*.zip
+          path: dist/FlipFlop-*.*
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
@@ -45,5 +49,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "$GITHUB_REF_NAME" dist/FlipFlop-*.zip --clobber ||
-            gh release create "$GITHUB_REF_NAME" dist/FlipFlop-*.zip --title "FlipFlop ${GITHUB_REF_NAME#v}" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/FlipFlop-*.* --clobber ||
+            gh release create "$GITHUB_REF_NAME" dist/FlipFlop-*.* --title "FlipFlop ${GITHUB_REF_NAME#v}" --generate-notes

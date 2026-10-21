@@ -3,3 +3,4 @@ flipflop.ico
 dist/
 tests/e2e.exe
 tests/e2e.log
+msix/
