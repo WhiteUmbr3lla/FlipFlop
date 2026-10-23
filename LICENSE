@@ -1,0 +1,15 @@
+Copyright (c) 2026 WhiteUmbr3lla. All rights reserved.
+
+The FlipFlop source code is published for transparency, so anyone can see what
+the app does with their keystrokes. Publishing it grants no license: you may
+read it, and verify that release builds come from it, but you may not copy,
+modify, redistribute or publish it, in whole or in part, without written
+permission from the copyright holder.
+
+FlipFlop releases may be downloaded and used free of charge, from this
+repository's Releases page or from the Microsoft Store.
+
+Exception: the word lists in the words/ folder come from FrequencyWords by
+Hermit Dave (https://github.com/hermitdave/FrequencyWords) and are licensed
+under CC-BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/), not
+under the terms above.

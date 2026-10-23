@@ -62,3 +62,6 @@ Requires both an English and a Hebrew keyboard layout installed.
 - Keystrokes are held in memory only, never written to disk, and are cleared on every click, Enter, arrow key, or window switch.
 
 Word lists: [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, CC-BY-SA 4.0.
+
+## License
+Source available, all rights reserved: see [LICENSE](LICENSE). You can read the code and verify the release builds, but not copy or redistribute it. The word lists in `words/` are CC-BY-SA 4.0.
