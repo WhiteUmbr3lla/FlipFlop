@@ -19,7 +19,7 @@ using Microsoft.Win32;
 
 static class Program
 {
-    static readonly string Ver = Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
+    static readonly string Ver = Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
     const string RegKey = @"Software\FlipFlop", RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     static Mode mode = Mode.Smart;
     static NotifyIcon tray;
@@ -37,6 +37,8 @@ static class Program
         // DPI-aware from the start, not only once UI Automation (auto mode) loads and silently turns it on, which left
         // the windows' fixed layouts at 100% under 225%-sized text. FitDpi() scales the forms instead.
         Native.SetProcessDPIAware();
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
         string err = Detector.Init();
         if (args.Length > 0 && args[0] == "--selftest") return SelfTest(err);
         if (args.Length > 1 && args[0] == "--write-icon") { WriteIcon(args[1]); return 0; }
@@ -195,12 +197,11 @@ static class Program
     // Forms are laid out in 96-DPI pixels; fonts already follow the screen, so scale positions and sizes to match.
     static void FitDpi(Form f)
     {
-        using (var g = Graphics.FromHwnd(IntPtr.Zero))
-        {
-            float k = g.DpiX / 96f;
-            if (k != 1) f.Scale(new SizeF(k, k));
-        }
+        float k = DpiScale();
+        if (k != 1) f.Scale(new SizeF(k, k));
     }
+
+    static float DpiScale() { using (var g = Graphics.FromHwnd(IntPtr.Zero)) return g.DpiX / 96f; }
 
     // Auto mode must never touch a password field: plenty of people use a Hebrew word typed on the English layout as
     // their password. UI Automation reports the focused field's IsPassword, browsers included.
@@ -316,7 +317,7 @@ static class Program
     {
         if (AlreadyOpen()) return;
         var f = new Form { Text = "FlipFlop - " + title, StartPosition = FormStartPosition.CenterScreen, ClientSize = new Size(340, 380),
-                           MinimizeBox = false, TopMost = true, Icon = tray.Icon };
+                           MinimizeBox = false, TopMost = true, Icon = tray.Icon, Font = SystemFonts.MessageBoxFont };
         var hint = new Label { Dock = DockStyle.Top, Height = 48, Padding = new Padding(8, 8, 8, 0), Text = hintText };
         var box = new TextBox { Multiline = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, AcceptsReturn = true,
                                 Font = new Font("Segoe UI", 11), Text = File.Exists(file) ? File.ReadAllText(file) : "" };
@@ -340,65 +341,155 @@ static class Program
 
     static string HotKeyText(Keys k) { return k == Keys.None ? "double Shift" : new KeysConverter().ConvertToString(k); }
 
+    // Settings: a sidebar (Hotkey / Typing / General / About) and one page at a time. Pages are top-down flow panels so
+    // they follow the font; fixed sizes go through S() for display scaling.
     static void ShowSettings()
     {
         if (AlreadyOpen()) return;
         bool wasEnabled = Hooks.Enabled; // the tray's Enabled toggle
         Hooks.Enabled = false; // don't fire while capturing a new hotkey
         Keys hot = Hooks.HotKey;
-        var f = new Form { Text = "FlipFlop " + Ver + " settings", FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false,
-                           StartPosition = FormStartPosition.CenterScreen, ClientSize = new Size(360, 262), TopMost = true, Icon = tray.Icon };
-        f.Controls.Add(new Label { Text = "Hotkey:", Location = new Point(12, 15), AutoSize = true });
-        var hotBox = new TextBox { ReadOnly = true, Location = new Point(110, 12), Width = 140, Text = HotKeyText(hot) };
-        var hotHint = new Label { Text = "(click the box, press a key combo)", Location = new Point(110, 38), AutoSize = true, ForeColor = Color.Gray };
+        float dpi = DpiScale();
+        Func<int, int> S = px => (int)(px * dpi);
+        bool hc = SystemInformation.HighContrast;
+        Color sideBg = hc ? SystemColors.Control : Color.FromArgb(243, 243, 243), selBg = hc ? SystemColors.Highlight : Color.FromArgb(229, 229, 229);
+        var heading = new Font("Segoe UI Semibold", 14f);
+        var bold = new Font("Segoe UI Semibold", 9f);
+
+        var f = new Form { Text = "FlipFlop settings", FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false,
+                           StartPosition = FormStartPosition.CenterScreen, ClientSize = new Size(S(560), S(380)), TopMost = true, Icon = tray.Icon,
+                           Font = SystemFonts.MessageBoxFont, BackColor = SystemColors.Window };
+        var content = new Panel { Dock = DockStyle.Fill };
+        var side = new Panel { Dock = DockStyle.Left, Width = S(160), BackColor = sideBg };
+        f.Controls.Add(content); f.Controls.Add(side); // Fill first, so the edges dock around it
+
+        Func<string, FlowLayoutPanel> page = title =>
+        {
+            var p = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Visible = false,
+                                          Padding = new Padding(S(24), S(18), S(24), 0) };
+            p.Controls.Add(new Label { Text = title, Font = heading, AutoSize = true, Margin = new Padding(0, 0, 0, S(14)) });
+            return p;
+        };
+        Func<string, Label> section = text => new Label { Text = text, Font = bold, AutoSize = true, Margin = new Padding(0, S(6), 0, S(6)) };
+        Func<string, int, Label> hint = (text, indent) => new Label { Text = text, AutoSize = true, ForeColor = SystemColors.GrayText,
+                                          MaximumSize = new Size(S(330) - indent, 0), Margin = new Padding(indent, S(2), 0, S(14)) };
+        Func<Control[], FlowLayoutPanel> row = cs =>
+        {
+            var r = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+            r.Controls.AddRange(cs);
+            return r;
+        };
+        Func<string, Button> button = text => new Button { Text = text, AutoSize = true, MinimumSize = new Size(S(88), S(28)), UseVisualStyleBackColor = true };
+
+        // Hotkey
+        var hotkeyPage = page("Hotkey");
+        hotkeyPage.Controls.Add(section("Shortcut"));
+        var hotBox = new TextBox { ReadOnly = true, Width = S(170), Text = HotKeyText(hot), BackColor = SystemColors.Window, Margin = new Padding(0, S(3), S(8), 0) };
+        string hotTip = "Click the box, then press a key combo.";
+        var hotHint = hint(hotTip, 0);
         hotBox.KeyDown += (s, e) =>
         {
             e.SuppressKeyPress = true;
             Keys code = e.KeyCode;
             if (code == Keys.ShiftKey || code == Keys.ControlKey || code == Keys.Menu || code == Keys.LWin || code == Keys.RWin) return;
             bool usable = UsableHotkey(e.KeyData);
-            hotHint.Text = usable ? "(click the box, press a key combo)" : "Use Ctrl/Alt + a key, or an F-key";
-            hotHint.ForeColor = usable ? Color.Gray : Color.Firebrick;
+            hotHint.Text = usable ? hotTip : "Use Ctrl/Alt + a key, or an F-key.";
+            hotHint.ForeColor = usable ? SystemColors.GrayText : Color.Firebrick;
             if (!usable) return;
             hot = e.KeyData;
             hotBox.Text = HotKeyText(hot);
         };
-        f.Controls.Add(hotBox);
-        var dbl = new Button { Text = "Double Shift", Location = new Point(258, 10), Width = 90 };
+        var dbl = button("Double Shift");
         dbl.Click += (s, e) => { hot = Keys.None; hotBox.Text = HotKeyText(hot); };
-        f.Controls.Add(dbl);
-        f.Controls.Add(hotHint);
-
-        f.Controls.Add(new Label { Text = "Hotkey fixes:", Location = new Point(12, 68), AutoSize = true });
-        var modeBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(110, 65), Width = 238 };
+        hotkeyPage.Controls.Add(row(new Control[] { hotBox, dbl }));
+        hotkeyPage.Controls.Add(hotHint);
+        hotkeyPage.Controls.Add(section("What the hotkey fixes"));
+        var modeBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = S(300), Margin = new Padding(0, 0, 0, S(14)) };
         modeBox.Items.AddRange(new object[] { "Smart (detect where it went wrong)", "Selected text only", "Last word only", "Everything since last click" });
         modeBox.SelectedIndex = (int)mode;
-        f.Controls.Add(modeBox);
+        hotkeyPage.Controls.Add(modeBox);
 
-        var autoBox = new CheckBox { Text = "Auto-fix while typing", Location = new Point(110, 100), AutoSize = true, Checked = Hooks.Auto };
-        f.Controls.Add(autoBox);
-        f.Controls.Add(new Label { Text = "(fixes clear mistakes when you press Space)", Location = new Point(128, 122), AutoSize = true, ForeColor = Color.Gray });
+        // Typing
+        var typingPage = page("Typing");
+        var autoBox = new CheckBox { Text = "Auto-fix while typing", AutoSize = true, Checked = Hooks.Auto, Margin = new Padding(0) };
+        typingPage.Controls.Add(autoBox);
+        typingPage.Controls.Add(hint("Fixes a word as soon as you press Space, when it's clearly in the wrong layout. " +
+                                     "Names, typos and words that exist in both languages are left to the hotkey.", S(18)));
+        typingPage.Controls.Add(hint("Names or slang it doesn't know? Add them from the tray menu: My words...", 0));
 
-        var startup = new CheckBox { Text = "Start with Windows", Location = new Point(110, 148), AutoSize = true };
+        // General
+        var generalPage = page("General");
+        var startup = new CheckBox { Text = "Start with Windows", AutoSize = true, Margin = new Padding(0, 0, 0, S(14)) };
         using (var k = Registry.CurrentUser.OpenSubKey(RunKey)) startup.Checked = k != null && k.GetValue("FlipFlop") != null;
-        if (Packaged) f.Controls.Add(Link("Start with Windows: set in Windows Settings", "ms-settings:startupapps", new Point(110, 150)));
-        else f.Controls.Add(startup);
-        f.Controls.Add(Link("FlipFlop on GitHub", "https://github.com/WhiteUmbr3lla/FlipFlop", new Point(12, 233)));
-
-        var logBox = new CheckBox { Text = "Write a log", Location = new Point(110, 174), AutoSize = true, Checked = Injector.Logging };
-        f.Controls.Add(logBox);
-        var clearLog = new Button { Text = "Clear log", Location = new Point(258, 170), Width = 90 };
+        if (Packaged)
+        {
+            var l = Link("Start with Windows: set in Windows Settings", "ms-settings:startupapps", Point.Empty);
+            l.Margin = new Padding(0, 0, 0, S(14));
+            generalPage.Controls.Add(l);
+        }
+        else generalPage.Controls.Add(startup);
+        var logBox = new CheckBox { Text = "Write a troubleshooting log", AutoSize = true, Checked = Injector.Logging, Margin = new Padding(0, S(6), S(12), 0) };
+        var clearLog = button("Clear log");
         clearLog.Click += (s, e) => { try { File.Delete(Injector.LogFile); clearLog.Text = "Cleared"; } catch { clearLog.Text = "Failed"; } };
-        f.Controls.Add(clearLog);
+        generalPage.Controls.Add(row(new Control[] { logBox, clearLog }));
+        generalPage.Controls.Add(hint("Records which app and which method each fix used, never what you type. Saved in %TEMP%\\FlipFlop.log.", S(18)));
 
-        var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(192, 228), Width = 75 };
-        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Location = new Point(273, 228), Width = 75 };
-        f.Controls.Add(ok); f.Controls.Add(cancel);
+        // About
+        var aboutPage = page("About");
+        var bigLogo = new PictureBox { Image = DrawLogo(S(48), true), Size = new Size(S(48), S(48)), Margin = new Padding(0, 0, S(12), 0) };
+        var name = new Label { Text = "FlipFlop " + Ver + "\nFixes text typed in the wrong keyboard layout (Hebrew ↔ English).", AutoSize = true,
+                               MaximumSize = new Size(S(260), 0), Margin = new Padding(0, S(4), 0, S(18)) };
+        aboutPage.Controls.Add(row(new Control[] { bigLogo, name }));
+        aboutPage.Controls.Add(section("Never saves or sends what you type."));
+        var privacy = Link("Privacy policy", "https://github.com/WhiteUmbr3lla/FlipFlop/blob/main/PRIVACY.md", Point.Empty);
+        var github = Link("FlipFlop on GitHub", "https://github.com/WhiteUmbr3lla/FlipFlop", Point.Empty);
+        privacy.Margin = github.Margin = new Padding(0, S(2), 0, S(6));
+        aboutPage.Controls.Add(privacy); aboutPage.Controls.Add(github);
+        aboutPage.Controls.Add(hint("Word lists: FrequencyWords by Hermit Dave (CC-BY-SA 4.0).", 0));
+
+        var pages = new[] { hotkeyPage, typingPage, generalPage, aboutPage };
+        var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = S(52), FlowDirection = FlowDirection.RightToLeft, BackColor = sideBg,
+                                        Padding = new Padding(S(12), S(12), S(12), 0) };
+        var cancel = button("Cancel"); cancel.DialogResult = DialogResult.Cancel;
+        var ok = button("OK"); ok.DialogResult = DialogResult.OK;
+        bar.Controls.Add(cancel); bar.Controls.Add(ok);
+        foreach (var p in pages) content.Controls.Add(p);
+        content.Controls.Add(bar);
         f.AcceptButton = ok; f.CancelButton = cancel;
         f.ActiveControl = ok; // not the hotkey box: stray typing as it opens would change the hotkey
-        f.Controls.Add(new Label { Text = "Word lists: FrequencyWords (CC-BY-SA 4.0)", Location = new Point(12, 206), AutoSize = true, ForeColor = Color.Gray });
 
-        FitDpi(f);
+        // Sidebar: logo, page buttons with an accent bar on the current one, version at the bottom.
+        side.Controls.Add(new PictureBox { Image = DrawLogo(S(28), true), Bounds = new Rectangle(S(16), S(16), S(28), S(28)) });
+        side.Controls.Add(new Label { Text = "FlipFlop", Font = new Font("Segoe UI Semibold", 11f), AutoSize = true, Location = new Point(S(50), S(19)) });
+        side.Controls.Add(new Label { Text = "Version " + Ver, ForeColor = SystemColors.GrayText, Dock = DockStyle.Bottom, Height = S(36),
+                                      Padding = new Padding(S(14), 0, 0, 0), TextAlign = ContentAlignment.MiddleLeft });
+        var accent = new Panel { BackColor = SystemColors.Highlight, Size = new Size(S(3), S(18)) };
+        side.Controls.Add(accent);
+        var navs = new Button[pages.Length];
+        Action<int> show = i =>
+        {
+            for (int j = 0; j < pages.Length; j++)
+            {
+                pages[j].Visible = j == i;
+                navs[j].BackColor = j == i ? selBg : sideBg;
+                navs[j].ForeColor = j == i && hc ? SystemColors.HighlightText : SystemColors.ControlText;
+            }
+            accent.Location = new Point(navs[i].Left + S(2), navs[i].Top + (navs[i].Height - accent.Height) / 2);
+        };
+        string[] titles = { "Hotkey", "Typing", "General", "About" };
+        for (int i = 0; i < navs.Length; i++)
+        {
+            int n = i;
+            var b = navs[i] = new Button { Text = titles[i], FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand,
+                                           Bounds = new Rectangle(S(6), S(64) + i * S(38), S(148), S(36)), Padding = new Padding(S(12), 0, 0, 0) };
+            b.FlatAppearance.BorderSize = 0;
+            b.FlatAppearance.MouseOverBackColor = hc ? SystemColors.Highlight : Color.FromArgb(234, 234, 234);
+            b.Click += (s, e) => show(n);
+            side.Controls.Add(b);
+        }
+        accent.BringToFront();
+        show(0);
+
         openForm = f;
         if (f.ShowDialog() == DialogResult.OK)
         {
@@ -412,6 +503,7 @@ static class Program
         }
         openForm = null;
         f.Dispose();
+        heading.Dispose(); bold.Dispose();
         Hooks.Enabled = wasEnabled;
     }
 
