@@ -4,3 +4,7 @@ dist/
 tests/e2e.exe
 tests/e2e.log
 msix/
+tests/apps.exe
+tests/apps.log
+tests/apps-chrome.html
+tests/word-*.png
