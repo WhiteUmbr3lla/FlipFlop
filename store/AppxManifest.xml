@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Microsoft Store package. Identity Name/Publisher and PublisherDisplayName must match Partner Center
-     (Product management > Product identity). Version is stamped in by make-msix.ps1. -->
+     (Product management > Product identity). Reserved name: "FlipFlop - Text Rescue", Store ID 9PCJT8XQKM5H. Version is stamped in by make-msix.ps1. -->
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
          xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap desktop rescap">
-  <Identity Name="WhiteUmbr3lla.FlipFlop" Publisher="CN=WhiteUmbr3lla" Version="0.0.0.0" ProcessorArchitecture="neutral" />
+  <Identity Name="WhiteUmbr3lla.FlipFlop-TextRescue" Publisher="CN=746BA2D9-5E6B-4DF5-930D-F766AB1D6266" Version="0.0.0.0" ProcessorArchitecture="neutral" />
   <Properties>
-    <DisplayName>FlipFlop</DisplayName>
+    <DisplayName>FlipFlop - Text Rescue</DisplayName>
     <PublisherDisplayName>WhiteUmbr3lla</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -20,7 +20,7 @@
   </Resources>
   <Applications>
     <Application Id="FlipFlop" Executable="FlipFlop.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="FlipFlop" Description="Fixes text typed in the wrong keyboard layout (Hebrew/English). Tap Shift twice."
+      <uap:VisualElements DisplayName="FlipFlop - Text Rescue" Description="Fixes text typed in the wrong keyboard layout (Hebrew/English). Tap Shift twice."
                           BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
       </uap:VisualElements>
