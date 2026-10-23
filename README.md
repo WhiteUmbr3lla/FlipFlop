@@ -1,4 +1,4 @@
-﻿# FlipFlop 1.0.4
+﻿# FlipFlop 1.0.5
 
 Typed in the wrong layout (`akuo` instead of `שלום`)? Tap **Shift twice**. FlipFlop finds where the wrong-layout text starts, retypes it in the other layout, and switches your keyboard. Tap again to undo.
 

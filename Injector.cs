@@ -35,9 +35,8 @@ static class Injector
         if (undo != null) // second press: put it back
         {
             DataObject clip = undo.Paste ? SaveClip() : null;
-            Apply(undo.Delete, undo.Text, undo.Paste);
+            Retype(undo.Delete, undo.Text, undo.Paste, undo.ToHe);
             if (undo.Paste) RestoreClip(clip);
-            SwitchLayout(undo.ToHe);
             lock (Hooks.Lock)
             {
                 Hooks.LastUndo = null;
@@ -53,8 +52,7 @@ static class Injector
         {
             int start = Detector.Fix(typed, mode, out conv, out toHe);
             string old = typed.Substring(start);
-            Apply(old.Length, conv, false);
-            SwitchLayout(toHe);
+            Retype(old.Length, conv, false, toHe);
             lock (Hooks.Lock)
             {
                 Hooks.Buffer.Length = 0;
@@ -97,8 +95,7 @@ static class Injector
             // can make a paste silently do nothing. Only multi-line text is pasted: a typed line break could be
             // Enter = "send" in a chat app.
             bool multi = sel.IndexOf('\n') >= 0;
-            Apply(0, result, multi);
-            SwitchLayout(toHe);
+            Retype(0, result, multi, toHe);
             lock (Hooks.Lock) Hooks.LastUndo = new Undo { Delete = Len(result), Text = sel, Paste = multi, ToHe = !toHe };
         }
         catch (Exception ex) { Log("clipboard path failed: " + ex); }
@@ -210,9 +207,20 @@ static class Injector
         if (paste && text.Length > 0) { Paste(text); Wait(150); }
     }
 
+    // Delete, switch the keyboard, then type. Word tags each letter with the keyboard it was typed on and switches the
+    // keyboard to match the text by itself: typed before the switch, the first letter kept the old tag and Word laid
+    // it out apart ("לום ... משהוש"). Typed after it, every letter arrives on the new layout, as if typed by hand.
+    static void Retype(int delete, string text, bool paste, bool toHe)
+    {
+        Apply(delete, "", false);
+        SwitchLayout(toHe);
+        Wait(50); // let the switch apply before the first letter
+        Apply(0, text, paste);
+    }
+
     public static void SwitchLayout(bool toHe, bool settle = true)
     {
-        // Posted messages jump ahead of queued keystrokes. Let the retyped text land first, or editors that follow
+        // Posted messages jump ahead of queued keystrokes. Let our Backspaces land first, or editors that follow
         // the text's language (WordPad, rich edit boxes) switch right back. The hook thread can't wait (settle false).
         if (settle) Wait(80);
         IntPtr fg = Native.GetForegroundWindow();
