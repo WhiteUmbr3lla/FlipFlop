@@ -43,9 +43,9 @@ End-to-end test (FlipFlop must be running with default settings; hands off the k
 
 It types into its own window like a keyboard and checks fixing, undo, selection, the current-line fallback, clipboard restore (text, files, images) and the layout switch, in both a plain and a rich edit box. `tests\e2e.exe --excluded` checks an excluded app is left alone (put `e2e.exe` in `excluded.txt` and turn auto mode on first). `tests\e2e.exe --auto` runs the auto mode cases instead (turn "Auto-fix while typing" on first), including a password box.
 
-Real-app test (FlipFlop running with auto-fix off; Notepad closed; hands off, about 2 minutes). The compile command is at the top of `testspps.cs`:
+Real-app test (FlipFlop running with auto-fix off; Notepad closed; hands off, about 2 minutes). The compile command is at the top of `tests\apps.cs`:
 
-    testspps.exe        (results in testspps.log)
+    tests\apps.exe        (results in tests\apps.log)
 
 It fixes a sentence in Windows 11 Notepad, Word, Excel and a Chrome text box, both right after typing it and with the text already in the line, and checks the stored text and the keyboard switch. It opens and closes its own windows and stops before typing if anything else is in front. Word also saves `tests\word-A.png` and `tests\word-B.png`: look at them, since Word can store the right letters and still display them wrong.
 
