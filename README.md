@@ -1,4 +1,4 @@
-﻿# FlipFlop 1.0.3
+﻿# FlipFlop 1.0.4
 
 Typed in the wrong layout (`akuo` instead of `שלום`)? Tap **Shift twice**. FlipFlop finds where the wrong-layout text starts, retypes it in the other layout, and switches your keyboard. Tap again to undo.
 
@@ -53,7 +53,9 @@ Requires both an English and a Hebrew keyboard layout installed.
 
 ## Known limits
 - Windows blocks injected input into apps running as administrator. Use the tray menu's "Restart as admin" option.
+- Auto-fix types its fix in one burst. Apps that fall behind on typed input (Windows 11 Notepad) can garble a fix that spans several words; the hotkey types one character at a time and isn't affected.
 - Autocomplete fields (browser address bar, IDE suggestions) can throw off the backspace count. Select the text and use the hotkey instead.
+- In an Excel cell you didn't just type into, the current-line fallback doesn't work (Excel copies the whole cell). Fixing what you just typed in a cell works.
 - VS Code copies the whole line on Ctrl+C with no selection, so the selection path can misfire there. Fixing what you just typed is unaffected.
 - Fixing a selection or line reads it with Ctrl+C, then types the result over it (multi-line text is pasted instead, since a typed line break could send a chat message). The clipboard is snapshotted and put back afterwards (copied files, images, formatted text). If nothing is selected, it isn't touched.
 - If a hotkey press seems to do nothing, tick "Write a log" in Settings and try again: `%TEMP%\FlipFlop.log` shows which app it happened in, which path it took, when FlipFlop paused (excluded app or full screen) and any error. It never contains what you typed.

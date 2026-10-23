@@ -172,7 +172,7 @@ static class Hooks
         string conv; bool toHe;
         int start = Detector.Fix(typed, Mode.Smart, out conv, out toHe);
         string old = typed.Substring(start);
-        Injector.Apply(old.Length, conv + " ", false);
+        Injector.Apply(old.Length, conv + " ", false, false);
         Injector.SwitchLayout(toHe, false);
         Buffer.Length = 0;
         Buffer.Append(typed.Substring(0, start) + conv + " ");

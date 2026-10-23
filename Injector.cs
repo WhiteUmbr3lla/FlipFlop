@@ -126,6 +126,13 @@ static class Injector
 
     static int Len(string s) { return s.Replace("\r\n", "\n").Length; } // one Backspace per line break
 
+    // Formats the snapshot leaves out: OLE embedding (live storage objects, not data) and metafiles. With Word's copy
+    // on the clipboard, reading or putting these back crashes inside ole32 (an access violation try/catch can't stop).
+    // Pasting after a fix still gives the same text, formatting and bitmap pictures, just not a live embedded object.
+    static readonly HashSet<string> Unsafe = new HashSet<string> { "Embed Source", "Link Source", "Object Descriptor",
+        "Link Source Descriptor", "Embedded Object", "Native", "OwnerLink", "ObjectLink", "Ole Private Data",
+        "EnhancedMetafile", "MetaFilePict" };
+
     // Snapshot every format on the clipboard (copied files incl. cut/copy, images, rich text, text) so we can put it all back.
     static DataObject SaveClip()
     {
@@ -135,7 +142,8 @@ static class Injector
             if (live == null) return null;
             var copy = new DataObject();
             foreach (string f in live.GetFormats(false))
-                try { object d = live.GetData(f, false); if (d != null) copy.SetData(f, false, d); }
+                if (!Unsafe.Contains(f))
+                    try { object d = live.GetData(f, false); if (d != null) copy.SetData(f, false, d); }
                 catch { } // a few app-private formats can't be read back; the rest still survive
             return copy.GetFormats().Length > 0 ? copy : null;
         }
@@ -184,15 +192,21 @@ static class Injector
         Send(Key(0x11, true), Key(0x56, true), Key(0x56, false), Key(0x11, false));
     }
 
-    // Delete `delete` chars before the cursor, then type or paste `text`. Typing (paste false) is a single SendInput,
-    // safe from the hook thread.
-    public static void Apply(int delete, string text, bool paste)
+    // Delete `delete` chars before the cursor, then type or paste `text`. A typed (Unicode) keystroke doesn't carry its
+    // character in the message: an app that falls behind reads whichever one Windows holds when it catches up, so
+    // Windows 11 Notepad, which stalls after each space, turned a burst into "שלום וווווו". Typing goes one character
+    // per SendInput with a pause (settle), and so do the Backspaces, which it also drops from a burst. The hook thread
+    // can't wait (settle false) and sends it all at once.
+    // ponytail: auto-fix keeps the burst, so a multi-word auto-fix can still garble in Notepad; defer its typing to the
+    // UI thread (holding the user's next keys meanwhile) if that shows up in practice.
+    public static void Apply(int delete, string text, bool paste, bool settle = true)
     {
         var inputs = new List<Native.INPUT>();
-        for (int i = 0; i < delete; i++) { inputs.Add(Key(0x08, true)); inputs.Add(Key(0x08, false)); }
+        Action step = () => { if (settle) { Send(inputs.ToArray()); inputs.Clear(); Wait(5); } };
+        for (int i = 0; i < delete; i++) { inputs.Add(Key(0x08, true)); inputs.Add(Key(0x08, false)); step(); }
         if (!paste)
-            foreach (char c in text) { inputs.Add(Unicode(c, true)); inputs.Add(Unicode(c, false)); }
-        Send(inputs.ToArray());
+            foreach (char c in text) { inputs.Add(Unicode(c, true)); inputs.Add(Unicode(c, false)); step(); }
+        if (inputs.Count > 0) Send(inputs.ToArray());
         if (paste && text.Length > 0) { Paste(text); Wait(150); }
     }
 
