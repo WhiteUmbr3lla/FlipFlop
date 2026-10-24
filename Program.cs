@@ -445,6 +445,12 @@ static class Program
         var github = Link("FlipFlop on GitHub", "https://github.com/WhiteUmbr3lla/FlipFlop", Point.Empty);
         privacy.Margin = github.Margin = new Padding(0, S(2), 0, S(6));
         aboutPage.Controls.Add(privacy); aboutPage.Controls.Add(github);
+        if (!Packaged) // the zip: point to the Store for automatic updates
+        {
+            var store = Link("Get it from the Microsoft Store (automatic updates)", "https://apps.microsoft.com/detail/9PCJT8XQKM5H", Point.Empty);
+            store.Margin = github.Margin;
+            aboutPage.Controls.Add(store);
+        }
         aboutPage.Controls.Add(hint("Word lists: FrequencyWords by Hermit Dave (CC-BY-SA 4.0).", 0));
 
         var pages = new[] { hotkeyPage, typingPage, generalPage, aboutPage };

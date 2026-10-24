@@ -6,6 +6,11 @@ Typed "akuo" when you meant "shalom" in Hebrew? Tap Shift twice and it's fixed.
 
 SETUP
 -----
+Easiest: get FlipFlop from the Microsoft Store instead. It installs in one
+click, without the warning below, and updates itself:
+https://apps.microsoft.com/detail/9PCJT8XQKM5H
+
+Using this zip instead:
 1. Extract this zip to a folder you'll keep (for example Documents\FlipFlop).
 2. Run FlipFlop.exe.
    Windows may show "Windows protected your PC", because the app isn't signed.

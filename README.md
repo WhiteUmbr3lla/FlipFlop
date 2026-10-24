@@ -3,9 +3,11 @@
 Typed in the wrong layout (`akuo` instead of `שלום`)? Tap **Shift twice**. FlipFlop finds where the wrong-layout text starts, retypes it in the other layout, and switches your keyboard. Tap again to undo.
 
 ## Download
-**[Download the latest FlipFlop zip](https://github.com/WhiteUmbr3lla/FlipFlop/releases/latest)**, unzip it to a folder you'll keep, and run `FlipFlop.exe`. Needs Windows 10/11 with English and Hebrew keyboard layouts installed.
+<a href="https://apps.microsoft.com/detail/9PCJT8XQKM5H"><img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get it from Microsoft"></a>
 
-FlipFlop isn't code-signed, so Windows may say "Windows protected your PC": click **More info**, then **Run anyway**. Every release zip is built from this repo's source by [GitHub Actions](.github/workflows/release.yml), not on anyone's PC, and you can check that yourself:
+**[FlipFlop - Text Rescue in the Microsoft Store](https://apps.microsoft.com/detail/9PCJT8XQKM5H)** (recommended): one-click install, no SmartScreen warning, automatic updates. Needs Windows 10/11 with English and Hebrew keyboard layouts installed.
+
+**Or the zip:** [download the latest release](https://github.com/WhiteUmbr3lla/FlipFlop/releases/latest), unzip it to a folder you'll keep, and run `FlipFlop.exe`. It isn't code-signed, so Windows may say "Windows protected your PC": click **More info**, then **Run anyway**. Every release is built from this repo's source by [GitHub Actions](.github/workflows/release.yml), not on anyone's PC, and you can check that yourself:
 
     gh attestation verify FlipFlop-<version>.zip -R WhiteUmbr3lla/FlipFlop
 
